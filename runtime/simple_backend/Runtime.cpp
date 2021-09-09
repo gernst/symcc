@@ -94,8 +94,7 @@ std::set<SymExpr> allocatedExpressions;
 
 SymExpr registerExpression(Z3_ast expr) {
   if (allocatedExpressions.count(expr) == 0) {
-    // We don't know this expression yet. Record it and increase the reference
-    // counter.
+    // We don't know this expression yet. Record it and increase the reference counter.
     allocatedExpressions.insert(expr);
     Z3_inc_ref(g_context, expr);
   }
@@ -104,6 +103,8 @@ SymExpr registerExpression(Z3_ast expr) {
 }
 
 } // namespace
+
+void _sym_finalize(void);
 
 void _sym_initialize(void) {
   if (g_initialized.test_and_set())
@@ -148,11 +149,16 @@ void _sym_initialize(void) {
   g_false = Z3_mk_false(g_context);
   Z3_inc_ref(g_context, g_false);
 
-  if (g_config.logFile.empty()) {
-    g_log = stderr;
-  } else {
+  if (!g_config.logFile.empty()) {
     g_log = fopen(g_config.logFile.c_str(), "w");
   }
+
+  atexit(_sym_finalize);
+}
+
+void _sym_finalize(void) {
+  fprintf(g_log, "%s",
+          Z3_solver_to_string(g_context, g_solver));
 }
 
 Z3_ast _sym_build_integer(uint64_t value, uint8_t bits) {
@@ -418,8 +424,22 @@ void _sym_push_path_constraint(Z3_ast constraint, int taken,
   if (constraint == nullptr)
     return;
 
+  registerExpression(constraint);
+
+  /* Negate the constraint if the branch was not taken */
+  if(!taken) {
+    constraint = Z3_mk_not(g_context, constraint);
+    registerExpression(constraint);
+  }
+
+  Z3_solver_assert(g_context, g_solver, constraint);
+
+#if 0
   constraint = Z3_simplify(g_context, constraint);
   Z3_inc_ref(g_context, constraint);
+
+  Z3_ast not_constraint = Z3_mk_not(g_context, constraint);
+  Z3_inc_ref(g_context, not_constraint);
 
   /* Check the easy cases first: if simplification reduced the constraint to
      "true" or "false", there is no point in trying to solve the negation or *
@@ -469,6 +489,7 @@ void _sym_push_path_constraint(Z3_ast constraint, int taken,
          "Asserting infeasible path constraint");
   Z3_dec_ref(g_context, constraint);
   Z3_dec_ref(g_context, not_constraint);
+#endif
 }
 
 SymExpr _sym_concat_helper(SymExpr a, SymExpr b) {
