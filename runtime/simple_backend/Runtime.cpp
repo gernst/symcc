@@ -79,6 +79,8 @@ void handle_z3_error(Z3_context c [[maybe_unused]], Z3_error_code e) {
 }
 #endif
 
+static std::vector<SymExpr> stdinBytes;
+
 Z3_ast build_variable(const char *name, uint8_t bits) {
   Z3_symbol sym = Z3_mk_string_symbol(g_context, name);
   auto *sort = Z3_mk_bv_sort(g_context, bits);
@@ -152,13 +154,6 @@ void _sym_initialize(void) {
   if (!g_config.logFile.empty()) {
     g_log = fopen(g_config.logFile.c_str(), "w");
   }
-
-  atexit(_sym_finalize);
-}
-
-void _sym_finalize(void) {
-  fprintf(g_log, "%s",
-          Z3_solver_to_string(g_context, g_solver));
 }
 
 Z3_ast _sym_build_integer(uint64_t value, uint8_t bits) {
@@ -185,13 +180,13 @@ Z3_ast _sym_build_float(double value, int is_double) {
 }
 
 Z3_ast _sym_get_input_byte(size_t offset) {
-  static std::vector<SymExpr> stdinBytes;
-
   if (offset < stdinBytes.size())
     return stdinBytes[offset];
 
   auto varName = "stdin" + std::to_string(stdinBytes.size());
   auto *var = build_variable(varName.c_str(), 8);
+
+  fprintf(g_log, "in  %ld\n", stdinBytes.size());
 
   stdinBytes.resize(offset);
   stdinBytes.push_back(var);
@@ -424,6 +419,12 @@ void _sym_push_path_constraint(Z3_ast constraint, int taken,
   if (constraint == nullptr)
     return;
 
+  fprintf(g_log, "%s %s\n",
+    taken ? "yes" : "no ",
+    Z3_ast_to_string(g_context, constraint));
+
+#if 0
+  // constraint = Z3_simplify(g_context, constraint);
   registerExpression(constraint);
 
   /* Negate the constraint if the branch was not taken */
@@ -433,6 +434,11 @@ void _sym_push_path_constraint(Z3_ast constraint, int taken,
   }
 
   Z3_solver_assert(g_context, g_solver, constraint);
+#endif
+
+#ifndef NDEBUG
+  std::cerr << "Pushed constraint" << std::endl;
+#endif
 
 #if 0
   constraint = Z3_simplify(g_context, constraint);
