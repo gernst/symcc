@@ -419,12 +419,17 @@ void _sym_push_path_constraint(Z3_ast constraint, int taken,
   if (constraint == nullptr)
     return;
 
-  fprintf(g_log, "%s %s\n",
+  fprintf(g_log, "%s %ld\n",
     taken ? "yes" : "no ",
+    site_id);
+
+  // constraint = Z3_simplify(g_context, constraint);
+  
+  fprintf(g_log, "%s\n",
     Z3_ast_to_string(g_context, constraint));
 
 #if 0
-  // constraint = Z3_simplify(g_context, constraint);
+  // 
   registerExpression(constraint);
 
   /* Negate the constraint if the branch was not taken */
