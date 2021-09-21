@@ -50,6 +50,11 @@ struct Config {
   /// 2GB on most workloads because requiring that amount of memory per core
   /// participating in the analysis seems reasonable.
   size_t garbageCollectionThreshold = 5'000'000;
+
+  // Timeout for execution of the binary, in seconds.
+  //
+  // A value of 0 means no timeout. The process is terminated using alarm(2).
+  size_t executionTimeout = 0;
 };
 
 /// The global configuration object.

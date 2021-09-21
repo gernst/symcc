@@ -22,6 +22,9 @@
 #include <set>
 #include <vector>
 
+#include <unistd.h>
+#include <signal.h>
+
 #ifndef NDEBUG
 #include <chrono>
 #endif
@@ -154,6 +157,15 @@ void _sym_initialize(void) {
   if (!g_config.logFile.empty()) {
     g_log = fopen(g_config.logFile.c_str(), "w");
   }
+  
+  if(g_config.executionTimeout > 0) {
+    signal(SIGALRM, exit);
+    alarm(g_config.executionTimeout);
+  }
+}
+
+void _sym_finalize(void) {
+  fflush(g_log);
 }
 
 Z3_ast _sym_build_integer(uint64_t value, uint8_t bits) {

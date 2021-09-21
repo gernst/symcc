@@ -36,6 +36,10 @@ bool checkFlagString(std::string value) {
   throw std::runtime_error(msg.str());
 }
 
+size_t checkInt(std::string value) {
+  return std::stoul(value);
+}
+
 } // namespace
 
 Config g_config;
@@ -56,6 +60,10 @@ void loadConfig() {
   auto *logFile = getenv("SYMCC_LOG_FILE");
   if (logFile != nullptr)
     g_config.logFile = logFile;
+
+  auto *timeout = getenv("SYMCC_TIMEOUT");
+  if (timeout != nullptr)
+    g_config.executionTimeout = checkInt(timeout);
 
   auto *pruning = getenv("SYMCC_ENABLE_LINEARIZATION");
   if (pruning != nullptr)
