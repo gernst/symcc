@@ -109,7 +109,16 @@ SymExpr registerExpression(Z3_ast expr) {
 
 } // namespace
 
-void _sym_finalize(void);
+void _sym_finalize(void) {
+  fprintf(g_log, "ok\n");
+  fflush(g_log);
+}
+
+void _sym_timeout(int) {
+  fprintf(g_log, "to\n");
+  fflush(g_log);
+  abort();
+}
 
 void _sym_initialize(void) {
   if (g_initialized.test_and_set())
@@ -159,13 +168,11 @@ void _sym_initialize(void) {
   }
   
   if(g_config.executionTimeout > 0) {
-    signal(SIGALRM, exit);
+    signal(SIGALRM, _sym_timeout);
     alarm(g_config.executionTimeout);
   }
-}
 
-void _sym_finalize(void) {
-  fflush(g_log);
+  atexit(_sym_finalize);
 }
 
 Z3_ast _sym_build_integer(uint64_t value, uint8_t bits) {
@@ -198,7 +205,7 @@ Z3_ast _sym_get_input_byte(size_t offset) {
   auto varName = "stdin" + std::to_string(stdinBytes.size());
   auto *var = build_variable(varName.c_str(), 8);
 
-  fprintf(g_log, "in  %ld\n", stdinBytes.size());
+  fprintf(g_log, "in  %ld\n", (unsigned long)stdinBytes.size());
 
   stdinBytes.resize(offset);
   stdinBytes.push_back(var);
@@ -433,7 +440,7 @@ void _sym_push_path_constraint(Z3_ast constraint, int taken,
 
   fprintf(g_log, "%s %ld\n",
     taken ? "yes" : "no ",
-    site_id);
+    (unsigned long)site_id);
 
   // constraint = Z3_simplify(g_context, constraint);
   
